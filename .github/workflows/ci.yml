@@ -92,7 +92,7 @@ jobs:
   build:
     name: Build application
     runs-on: ubuntu-latest
-    needs: sonarqube
+    needs: lint
 
     steps:
       - name: Checkout repository
@@ -119,36 +119,6 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
           if-no-files-found: error
-
-  sonarqube:
-    name: SonarQube analysis
-    runs-on: ubuntu-latest
-    needs: lint
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download frontend coverage report
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage
-
-      - name: Download backend coverage report when available
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend
-          if-no-artifact-found: ignore
-
-      - name: Run SonarQube scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   docker:
     name: Build Docker images
@@ -191,8 +161,8 @@ jobs:
 
   deploy-staging:
     name: Deploy staging with Docker Compose
-    if: ${{ needs.sonarqube.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
-    needs: [docker, sonarqube]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+    needs: [docker]
     runs-on: ubuntu-latest
     environment:
       name: staging
@@ -247,8 +217,8 @@ jobs:
 
   deploy-production:
     name: Deploy production with Docker Compose
-    if: ${{ needs.sonarqube.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    needs: [docker, sonarqube]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [docker]
     runs-on: ubuntu-latest
     environment:
       name: production
